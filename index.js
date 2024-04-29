@@ -1,10 +1,17 @@
 require("dotenv").config();
 const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
 const resourceNotFound = require("./middlewares/resourceNotFound");
 const errorHandler = require("./middlewares/errorHandler");
-const app = express();
 const intializeDbConnection = require("./db/initializeDbConnection");
+const videos = require("./routes/videos.route");
+
+const app = express();
 intializeDbConnection();
+app.use(cors());
+app.use(bodyParser.json());
+app.use("/videos", videos);
 
 const PORT = process.env.PORT;
 

@@ -6,12 +6,14 @@ const resourceNotFound = require("./middlewares/resourceNotFound");
 const errorHandler = require("./middlewares/errorHandler");
 const intializeDbConnection = require("./db/initializeDbConnection");
 const videos = require("./routes/videos.route");
+const user = require("./routes/user.route");
 
 const app = express();
 intializeDbConnection();
 app.use(cors());
 app.use(bodyParser.json());
 app.use("/videos", videos);
+app.use("/user", user);
 
 const PORT = process.env.PORT;
 

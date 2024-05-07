@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-const videoSchema = new Schema({
+const VideoSchema = new Schema({
   videoId: {
     type: String,
     unique: true,
@@ -18,6 +18,6 @@ const videoSchema = new Schema({
   tags: [String],
 });
 
-const videoModel = mongoose.model("video", videoSchema);
+const Video = mongoose.model("Video", VideoSchema);
 
-module.exports = videoModel;
+module.exports = Video;

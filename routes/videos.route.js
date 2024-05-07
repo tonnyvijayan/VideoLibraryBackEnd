@@ -1,16 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const videoModel = require("../models/videos.model");
+const Video = require("../models/videos.model");
 
 router.route("/").get(async (req, res) => {
-  const allVideoData = await videoModel.find({});
+  const allVideoData = await Video.find({});
   res.json({ data: allVideoData });
 });
 
 router.route("/:videoId").get(async (req, res) => {
   try {
     const { videoId } = req.params;
-    const videoData = await videoModel.find({ _id: videoId });
+    const videoData = await Video.find({ _id: videoId });
     res.send(videoData);
   } catch (error) {
     console.log(error.message);
@@ -22,7 +22,7 @@ router.route("/addvideo").post(async (req, res) => {
   const videoToBeAdded = req.body;
   console.log(videoToBeAdded);
   try {
-    const newVideoModel = new videoModel(videoToBeAdded);
+    const newVideoModel = new Video(videoToBeAdded);
     const savedVideo = await newVideoModel.save();
     res
       .status(201)

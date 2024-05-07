@@ -31,6 +31,7 @@ router.route("/createuser").post(async (req, res) => {
       password: hashedPassword,
       refreshToken: refreshToken,
     };
+
     let newUserDetails = new User(newUser);
 
     let newUserCreated = await newUserDetails.save();
@@ -153,6 +154,103 @@ router.route("/logout").get(async (req, res) => {
 
 router.route("/playlist").get(verifyJwt, (req, res) => {
   res.json({ message: `Here is ${req.user} playlist` });
+});
+
+//add middle ware to fetch user name after verifying auth header
+router.route("/fetchplaylists").get(async (req, res) => {
+  let user = "sula";
+  const [userData] = await User.find({ name: user }).populate(
+    "playLists.videos"
+  );
+  const playListData = userData.playLists;
+  res.status(200).json({ playLists: playListData });
+});
+router.route("/createplaylist").post(async (req, res) => {
+  let user = "sula";
+  const { playListName } = req.body;
+
+  let [userToBeUpdated] = await User.find({ name: user });
+
+  const [checkIfPlaylistExist] = userToBeUpdated.playLists.filter((item) => {
+    return item.playListName === playListName;
+  });
+
+  if (checkIfPlaylistExist) {
+    return res
+      .status(409)
+      .json({ message: `Playlist ${playListName} already exists` });
+  }
+
+  userToBeUpdated.playLists.addToSet({ playListName: playListName });
+
+  const savedUser = await userToBeUpdated.save();
+  res.status(201).json({ message: `Playlist ${playListName} created` });
+});
+
+router.route("/deleteplaylist/:playlistName").delete(async (req, res) => {
+  let user = "sula";
+  const userParams = req.params;
+  const [userToBeUpdated] = await User.find({ name: user });
+  const updatedPlaylist = userToBeUpdated.playLists.filter((item) => {
+    return item.playListName !== userParams.playlistName;
+  });
+  userToBeUpdated.playLists = updatedPlaylist;
+  const updatedUserDetails = await userToBeUpdated.save();
+  res
+    .status(200)
+    .json({ message: `${userParams.playlistName} playlist deleted` });
+});
+router.route("/addtoplaylist").post(async (req, res) => {
+  let user = "sula";
+  const { playListName, videoId } = req.body;
+  const [userToBeUpdated] = await User.find({ name: user });
+  const [playListToBeUpdated] = userToBeUpdated.playLists.filter((item) => {
+    return item.playListName === playListName;
+  });
+
+  if (playListToBeUpdated.videos.includes(videoId)) {
+    return res.status(409).json({ message: "Video already exist in playlist" });
+  }
+  playListToBeUpdated.videos = [...playListToBeUpdated.videos, videoId];
+  const mergedPlaylist = userToBeUpdated.playLists.map((item) => {
+    return item.playListName === playListName ? playListToBeUpdated : item;
+  });
+
+  userToBeUpdated.playLists = mergedPlaylist;
+  const addedToPlaylistDetails = await userToBeUpdated.save();
+  console.log("latest playlist", addedToPlaylistDetails);
+
+  res.status(201).json({ message: "Video added to playlist" });
+});
+
+router.route("/removefromplaylist").post(async (req, res) => {
+  let user = "sula";
+  const { playListName, videoId } = req.body;
+  const [userToBeUpdated] = await User.find({ name: user });
+  const [playListToBeUpdated] = userToBeUpdated.playLists.filter((item) => {
+    return item.playListName === playListName;
+  });
+
+  console.log({ playListToBeUpdated });
+
+  const updatedVideolist = playListToBeUpdated.videos.filter((item) => {
+    return item.toString() !== videoId;
+  });
+
+  console.log({ updatedVideolist });
+  playListToBeUpdated.videos = updatedVideolist;
+
+  const mergedPlaylist = userToBeUpdated.playLists.map((item) => {
+    return item.playListName === playListName ? playListToBeUpdated : item;
+  });
+
+  console.log({ mergedPlaylist });
+
+  userToBeUpdated.playLists = mergedPlaylist;
+  const addedToPlaylistDetails = await userToBeUpdated.save();
+  console.log("removed from playlist", addedToPlaylistDetails);
+
+  res.status(200).json({ message: "video removed from playlist" });
 });
 
 module.exports = router;

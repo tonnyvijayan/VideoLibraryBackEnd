@@ -253,4 +253,37 @@ router.route("/removefromplaylist").post(async (req, res) => {
   res.status(200).json({ message: "video removed from playlist" });
 });
 
+router.route("/fetchwatchlater").get(async (req, res) => {
+  let user = "sula";
+  const [userData] = await User.find({ name: user }).populate("watchLater");
+
+  console.log({ userData });
+  res.status(200).json({ watchLaterVideos: userData.watchLater });
+});
+
+router.route("/addtowatchlater").post(async (req, res) => {
+  const user = "sula";
+  const { videoId } = req.body;
+
+  const [userToBeUpdated] = await User.find({ name: user });
+  if (userToBeUpdated.watchLater.includes(videoId)) {
+    return res.status(409).json({ message: "Video already exists" });
+  }
+  userToBeUpdated.watchLater.addToSet(videoId);
+  await userToBeUpdated.save();
+  res.status(201).json({ message: "Video added to watch later" });
+});
+router.route("/removefromwatchlater").post(async (req, res) => {
+  const user = "sula";
+  const { videoId } = req.body;
+  const [userToBeUpdated] = await User.find({ name: user });
+  const updatedWatchlater = userToBeUpdated.watchLater.filter((item) => {
+    return item.toString() !== videoId;
+  });
+
+  userToBeUpdated.watchLater = updatedWatchlater;
+  await userToBeUpdated.save();
+  res.status(200).json({ message: "Video removed from watch later" });
+});
+
 module.exports = router;

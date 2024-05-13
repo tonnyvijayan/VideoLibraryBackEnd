@@ -19,12 +19,12 @@ router.route("/createuser").post(async (req, res) => {
     const accessToken = await jwt.sign(
       { name: userData.name },
       process.env.ACCESS_TOKEN_SIGNING_KEY,
-      { expiresIn: "20s" }
+      { expiresIn: "2m" }
     );
     const refreshToken = await jwt.sign(
       { name: userData.name },
       process.env.REFRESH_TOKEN_SIGNING_KEY,
-      { expiresIn: "2m" }
+      { expiresIn: "6m" }
     );
     const newUser = {
       ...userData,
@@ -41,7 +41,7 @@ router.route("/createuser").post(async (req, res) => {
     res.cookie("jwt", refreshToken, {
       httpOnly: true,
       // maxAge: 24 * 60 * 60 * 1000,
-      maxAge: 120000,
+      maxAge: 360000,
     });
     res.status(201).json({
       message: `Account for ${newUserCreated.name} created`,
@@ -75,14 +75,14 @@ router.route("/authenticateuser").post(async (req, res, next) => {
         { name: userData.name },
         process.env.ACCESS_TOKEN_SIGNING_KEY,
         {
-          expiresIn: "20s",
+          expiresIn: "2m",
         }
       );
       const refreshToken = jwt.sign(
         { name: userData.name },
         process.env.REFRESH_TOKEN_SIGNING_KEY,
         {
-          expiresIn: "2m",
+          expiresIn: "6m",
         }
       );
       console.log({ userData, refreshToken });
@@ -91,7 +91,7 @@ router.route("/authenticateuser").post(async (req, res, next) => {
       await userData.save();
 
       logEvents(`${userData.name} logged in`, "users.txt");
-      res.cookie("jwt", refreshToken, { httpOnly: true, maxAge: 120000 });
+      res.cookie("jwt", refreshToken, { httpOnly: true, maxAge: 360000 });
       res
         .status(200)
         .json({ userLogin: userPasswordCheck, accessToken: accessToken });
@@ -127,7 +127,7 @@ router.route("/refresh").get(async (req, res) => {
       const newAccessToken = jwt.sign(
         { name: decoded.name },
         process.env.ACCESS_TOKEN_SIGNING_KEY,
-        { expiresIn: "20s" }
+        { expiresIn: "2m" }
       );
       res.status(201).json({ accessToken: newAccessToken });
     }
@@ -157,16 +157,18 @@ router.route("/playlist").get(verifyJwt, (req, res) => {
 });
 
 //add middle ware to fetch user name after verifying auth header
-router.route("/fetchplaylists").get(async (req, res) => {
-  let user = "sula";
+router.route("/fetchplaylists").get(verifyJwt, async (req, res) => {
+  console.log("entered fetchplaylist");
+  let user = req.user;
+  console.log("user is ", user);
   const [userData] = await User.find({ name: user }).populate(
     "playLists.videos"
   );
   const playListData = userData.playLists;
   res.status(200).json({ playLists: playListData });
 });
-router.route("/createplaylist").post(async (req, res) => {
-  let user = "sula";
+router.route("/createplaylist").post(verifyJwt, async (req, res) => {
+  let user = req.user;
   const { playListName } = req.body;
 
   let [userToBeUpdated] = await User.find({ name: user });
@@ -181,27 +183,39 @@ router.route("/createplaylist").post(async (req, res) => {
       .json({ message: `Playlist ${playListName} already exists` });
   }
 
-  userToBeUpdated.playLists.addToSet({ playListName: playListName });
-
-  const savedUser = await userToBeUpdated.save();
-  res.status(201).json({ message: `Playlist ${playListName} created` });
-});
-
-router.route("/deleteplaylist/:playlistName").delete(async (req, res) => {
-  let user = "sula";
-  const userParams = req.params;
-  const [userToBeUpdated] = await User.find({ name: user });
-  const updatedPlaylist = userToBeUpdated.playLists.filter((item) => {
-    return item.playListName !== userParams.playlistName;
+  userToBeUpdated.playLists.addToSet({
+    playListName: playListName,
   });
-  userToBeUpdated.playLists = updatedPlaylist;
-  const updatedUserDetails = await userToBeUpdated.save();
-  res
-    .status(200)
-    .json({ message: `${userParams.playlistName} playlist deleted` });
+
+  const updatedUser = await userToBeUpdated.save();
+
+  const [newPlayList] = updatedUser.playLists.filter((item) => {
+    return item.playListName === playListName;
+  });
+
+  res.status(201).json({
+    message: `${playListName} playlist  created`,
+    newPlayList: newPlayList,
+  });
 });
-router.route("/addtoplaylist").post(async (req, res) => {
-  let user = "sula";
+
+router
+  .route("/deleteplaylist/:playlistName")
+  .delete(verifyJwt, async (req, res) => {
+    let user = req.user;
+    const userParams = req.params;
+    const [userToBeUpdated] = await User.find({ name: user });
+    const updatedPlaylist = userToBeUpdated.playLists.filter((item) => {
+      return item.playListName !== userParams.playlistName;
+    });
+    userToBeUpdated.playLists = updatedPlaylist;
+    const updatedUserDetails = await userToBeUpdated.save();
+    res
+      .status(200)
+      .json({ message: `${userParams.playlistName} playlist deleted` });
+  });
+router.route("/addtoplaylist").post(verifyJwt, async (req, res) => {
+  let user = req.user;
   const { playListName, videoId } = req.body;
   const [userToBeUpdated] = await User.find({ name: user });
   const [playListToBeUpdated] = userToBeUpdated.playLists.filter((item) => {
@@ -223,8 +237,8 @@ router.route("/addtoplaylist").post(async (req, res) => {
   res.status(201).json({ message: "Video added to playlist" });
 });
 
-router.route("/removefromplaylist").post(async (req, res) => {
-  let user = "sula";
+router.route("/removefromplaylist").post(verifyJwt, async (req, res) => {
+  let user = req.user;
   const { playListName, videoId } = req.body;
   const [userToBeUpdated] = await User.find({ name: user });
   const [playListToBeUpdated] = userToBeUpdated.playLists.filter((item) => {
@@ -253,8 +267,11 @@ router.route("/removefromplaylist").post(async (req, res) => {
   res.status(200).json({ message: "video removed from playlist" });
 });
 
-router.route("/fetchwatchlater").get(async (req, res) => {
-  let user = "sula";
+router.route("/fetchwatchlater").get(verifyJwt, async (req, res) => {
+  console.log("entered watchlater");
+
+  let user = req.user;
+  console.log("requested user is", user);
   const [userData] = await User.find({ name: user }).populate("watchLater");
 
   console.log({ userData });

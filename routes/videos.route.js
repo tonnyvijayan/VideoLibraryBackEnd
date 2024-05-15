@@ -3,8 +3,12 @@ const router = express.Router();
 const Video = require("../models/videos.model");
 
 router.route("/").get(async (req, res) => {
-  const allVideoData = await Video.find({});
-  res.json({ data: allVideoData });
+  try {
+    const allVideoData = await Video.find({});
+    res.json({ data: allVideoData });
+  } catch (error) {
+    res.json(error);
+  }
 });
 
 router.route("/:videoId").get(async (req, res) => {

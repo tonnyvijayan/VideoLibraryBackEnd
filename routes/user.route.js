@@ -67,7 +67,7 @@ router.route("/authenticateuser").post(async (req, res, next) => {
       return res.status(401).json({ message: "User Not Found" });
     }
     const userPasswordHash = userData.password;
-    console.log({ password, userPasswordHash });
+
     const userPasswordCheck = await bcrypt.compare(password, userPasswordHash);
 
     if (userPasswordCheck) {
@@ -85,7 +85,6 @@ router.route("/authenticateuser").post(async (req, res, next) => {
           expiresIn: "6m",
         }
       );
-      console.log({ userData, refreshToken });
 
       userData.refreshToken = refreshToken;
       await userData.save();
@@ -111,10 +110,10 @@ router.route("/refresh").get(async (req, res) => {
       .status(401)
       .json({ message: "Unauthorized/refreshToken missing" });
   }
-  console.log(cookies.jwt);
+
   let token = cookies.jwt;
   const [getUserByToken] = await User.find({ refreshToken: token });
-  console.log({ getUserByToken });
+
   await jwt.verify(
     token,
     process.env.REFRESH_TOKEN_SIGNING_KEY,
@@ -139,7 +138,6 @@ router.route("/logout").get(async (req, res) => {
   if (!cookies.jwt) {
     return res.sendStatus(204);
   }
-
   const refreshToken = cookies.jwt;
   const [userToBeLoggedOut] = await User.find({ refreshToken: refreshToken });
   if (!userToBeLoggedOut) {
@@ -152,15 +150,10 @@ router.route("/logout").get(async (req, res) => {
   res.status(200).json({ message: "User Logged out" });
 });
 
-router.route("/playlist").get(verifyJwt, (req, res) => {
-  res.json({ message: `Here is ${req.user} playlist` });
-});
-
 //add middle ware to fetch user name after verifying auth header
 router.route("/fetchplaylists").get(verifyJwt, async (req, res) => {
-  console.log("entered fetchplaylist");
   let user = req.user;
-  console.log("user is ", user);
+
   const [userData] = await User.find({ name: user }).populate(
     "playLists.videos"
   );
@@ -214,6 +207,7 @@ router
       .status(200)
       .json({ message: `${userParams.playlistName} playlist deleted` });
   });
+
 router.route("/addtoplaylist").post(verifyJwt, async (req, res) => {
   let user = req.user;
   const { playListName, videoId } = req.body;
@@ -232,7 +226,6 @@ router.route("/addtoplaylist").post(verifyJwt, async (req, res) => {
 
   userToBeUpdated.playLists = mergedPlaylist;
   const addedToPlaylistDetails = await userToBeUpdated.save();
-  console.log("latest playlist", addedToPlaylistDetails);
 
   res.status(201).json({ message: "Video added to playlist" });
 });
@@ -245,41 +238,32 @@ router.route("/removefromplaylist").post(verifyJwt, async (req, res) => {
     return item.playListName === playListName;
   });
 
-  console.log({ playListToBeUpdated });
-
   const updatedVideolist = playListToBeUpdated.videos.filter((item) => {
     return item.toString() !== videoId;
   });
 
-  console.log({ updatedVideolist });
   playListToBeUpdated.videos = updatedVideolist;
 
   const mergedPlaylist = userToBeUpdated.playLists.map((item) => {
     return item.playListName === playListName ? playListToBeUpdated : item;
   });
 
-  console.log({ mergedPlaylist });
-
   userToBeUpdated.playLists = mergedPlaylist;
   const addedToPlaylistDetails = await userToBeUpdated.save();
-  console.log("removed from playlist", addedToPlaylistDetails);
 
   res.status(200).json({ message: "video removed from playlist" });
 });
 
 router.route("/fetchwatchlater").get(verifyJwt, async (req, res) => {
-  console.log("entered watchlater");
-
   let user = req.user;
-  console.log("requested user is", user);
+
   const [userData] = await User.find({ name: user }).populate("watchLater");
 
-  console.log({ userData });
   res.status(200).json({ watchLaterVideos: userData.watchLater });
 });
 
-router.route("/addtowatchlater").post(async (req, res) => {
-  const user = "sula";
+router.route("/addtowatchlater").post(verifyJwt, async (req, res) => {
+  const user = req.user;
   const { videoId } = req.body;
 
   const [userToBeUpdated] = await User.find({ name: user });
@@ -290,8 +274,8 @@ router.route("/addtowatchlater").post(async (req, res) => {
   await userToBeUpdated.save();
   res.status(201).json({ message: "Video added to watch later" });
 });
-router.route("/removefromwatchlater").post(async (req, res) => {
-  const user = "sula";
+router.route("/removefromwatchlater").post(verifyJwt, async (req, res) => {
+  const user = req.user;
   const { videoId } = req.body;
   const [userToBeUpdated] = await User.find({ name: user });
   const updatedWatchlater = userToBeUpdated.watchLater.filter((item) => {

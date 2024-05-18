@@ -1,6 +1,6 @@
 const corsOptions = {
   credentials: true,
-  origin: "http://localhost:5173",
+  origin: "https://finvviewlib.netlify.app",
 };
 
 module.exports = { corsOptions };

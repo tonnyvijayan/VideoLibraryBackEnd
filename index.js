@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 4010;
 
 const app = express();
 intializeDbConnection();
-cronJob();
+// cronJob();
 
 // app.use(logger);
 app.use(cookieParser());

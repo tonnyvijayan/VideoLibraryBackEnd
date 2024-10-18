@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 4010;
 
 const app = express();
 intializeDbConnection();
-// cronJob();
+cronJob();
 
 // app.use(logger);
 app.use(cookieParser());
@@ -25,7 +25,7 @@ app.use(bodyParser.json());
 app.use("/videos", videos);
 app.use("/user", user);
 
-app.get("/", (req, res) => {
+app.get("/serveractivate", (req, res) => {
   res.send("server active");
 });
 
